@@ -87,4 +87,5 @@ loads "database.ml";;   (* List of name-theorem pairs for search system      *)
 (* Load SCTPTP tools                                                         *)
 (* ------------------------------------------------------------------------- *)
 
-loads "SCTPTP/tptp.ml";;
+#directory "SCTPTP";;
+loads "SCTPTP/tptp_tac.ml";;

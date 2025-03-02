@@ -370,23 +370,72 @@ module Tptp_tac = struct
     mk_const ("?", [ty, aty]);;
 
   (* sctptp proof steps *)
+
+  (*
+    SC: -------
+          ⊥ |-
+
+    ND: -------
+        ⊥ |- ⊥
+  *)
   let left_false : thm =
     ASSUME `F`;;
 
+  (*
+    SC: -------
+          |- ⊤
+
+    ND: --------
+        ¬⊤ |- ⊥
+  *)
   let right_true : thm =
     UNDISCH (TAUT `(~T) ==> F`);;
 
+  (*
+    SC: --------
+         a |- a
+
+    ND: ----------
+        a, ¬a |- ⊥
+  *)
   let hypothesis (formula: term) : thm = 
     let base = ASSUME formula in
       clear_right formula base;;
 
+  (*
+    SC:     Γ |- Δ
+        -------------
+          Γ, a |- Δ
+
+    ND:    Γ, ¬Δ |- ⊥
+        -----------------
+          Γ, ¬Δ, a |- ⊥
+  *)
   let weaken_left (formula: term) (premise: thm) : thm =
     UNDISCH (DISCH formula premise);;
 
+  (*
+    SC:     Γ |- Δ
+        -------------
+          Γ |- a, Δ
+
+    ND:    Γ, ¬Δ |- ⊥
+        -----------------
+          Γ, ¬Δ, ¬a |- ⊥
+  *)
   let weaken_right (formula: term) (premise: thm) : thm =
     let lform = mk_neg formula in
       weaken_left lform premise;;
 
+  (*
+    SC:            Γ |- Δ
+        ---------------------------
+          Γ, left_fs |- right_fs, Δ
+
+    ND:            Γ, ¬Δ |- ⊥
+        ---------------------------------
+          Γ, ¬Δ, left_fs, ¬right_fs |- ⊥
+  *)
   let weaken (left_formulas: term list) (right_formulas: term list) (premise: thm) : thm =
     let left_step = List.fold_left (fun p f -> weaken_left f p) premise left_formulas in
     let right_step = List.fold_left (fun p f -> weaken_right f p) left_step right_formulas in
@@ -583,11 +632,29 @@ module Tptp_tac = struct
     let right_proved = DISJ1 (restore_right a premise) b in
       clear_right (mk_disj (a, b)) right_proved;;
 
+  (*
+    SC:   Γ, a |- b, Δ
+      --------------------
+        Γ |- a ==> b, Δ
+
+    ND:    Γ, a, ¬b, ¬Δ |- ⊥
+      -------------------------
+        Γ, ¬Δ, ¬(a ==> b) |- ⊥
+  *)
   let right_implies (a: term) (b: term) (premise: thm) : thm = 
     let rightb = restore_right b premise in
     let proved_imp = DISCH a rightb in
       clear_right (mk_imp (a, b)) proved_imp;;
 
+  (*
+    SC:   Γ |- a ==> b, Δ   Σ |- b ==> a, Π
+      ---------------------------------------
+              Γ, Σ |- a <=> b, Δ, Π
+
+    ND:    Γ, ¬(a ==> b), ¬Δ |- ⊥   Σ, ¬(b ==> a), ¬Π |- ⊥
+      ------------------------------------------------------
+               Γ, Σ, ¬Δ, ¬Π, ¬(a <=> b) |- ⊥
+  *)
   let right_iff (a: term) (b: term) (left_prem: thm) (right_prem: thm) : thm = 
     let a_b, b_a = mk_imp (a, b), mk_imp (b, a) in
     let aiffb = mk_iff (a, b) in
@@ -597,6 +664,15 @@ module Tptp_tac = struct
     let proved_right = EQ_MP inst_rule conj_imp in
       clear_right aiffb proved_right;;
     
+  (*
+    SC :   Γ, a |- Δ
+        \--------------------
+            Γ |- ¬a, Δ
+
+    ND :    Γ, ¬ a, ¬ Δ |- ⊥
+        \------------------------
+            Γ, ¬¬a, ¬ Δ |- ⊥
+  *)
   let right_not (a: term) (premise: thm) : thm =
     let imp = DISCH a premise in
     let inst_rule = INST [a, `b: bool`] IMP_NEG_DEF in
@@ -696,6 +772,8 @@ module Tptp_tac = struct
     CAVEAT: this step performs selective beta reduction after instantiation. If t
     already occurs as a beta redux in the premise, those instances will
     unfortunately be erroneously beta reduced as well.
+
+    This is a specialized version of inst_mult.
   *)
   let inst_fun (f: term) (t: term) (premise: thm) : thm =
     let inst_base = INST [t, f] premise in

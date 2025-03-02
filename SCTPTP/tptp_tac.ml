@@ -854,7 +854,129 @@ module Tptp_tac = struct
 
   (* LEVEL 2 STEPS *)
 
+  (* all have top level transformations into level 1 *)
+  (* specific implementations not necessary *)
+
   (* LEVEL 3 STEPS *)
+
+  (*
+    SC :   Γ |- φ, Δ
+        ----------------
+          Γ |- φ', Δ
+
+    ND:   Γ, ¬φ, ¬Δ |- ⊥
+        -----------------
+          Γ, ¬φ', ¬Δ |- ⊥
+
+    where φ and φ' reduce to the same nnf.
+  *)
+  let right_nnf (phi: term) (phi': term) (premise: thm) : thm =
+    let phi_nnf = NNF_CONV phi in (* |- phi = phi_nnf *)
+    let phi'_nnf = SYM (NNF_CONV phi') in (* |- phi'_nnf = phi' *)
+    (* presumably phi_nnf = phi'_nnf *)
+    let nnf_rule = TRANS phi_nnf, phi'_nnf in (* |- phi = phi' *)
+    let clean_premise = restore_right phi premise in 
+    let nnf_premise = EQ_MP nnf_rule clean_premise in
+      clear_right phi' nnf_premise;;
+
+  (*
+    SC :   Γ |- φ, Δ
+        ----------------
+          Γ |- φ', Δ
+
+    ND:   Γ, ¬φ, ¬Δ |- ⊥
+        -----------------
+          Γ, ¬φ', ¬Δ |- ⊥
+
+    where φ and φ' reduce to the same prenex normal form.
+  *)
+  let right_prenex (phi: term) (phi': term) (premise: thm) : thm =
+    let phi_prenex_eq = (* |- phi = phi_prenex *)
+      let phi_nnf_eq = NNF_CONV phi in (* |- phi = phi_nnf *)
+      let phi_nnf = rand (concl phi_nnf_eq) in
+      let phi_prenex = PRENEX_CONV phi_nnf in (* |- phi_nnf = phi_prenex *)
+        TRANS phi_nnf_eq phi_prenex
+    in
+    let phi'_prenex_eq = (* |- phi'_prenex = phi' *)
+      let phi'_nnf_eq = NNF_CONV phi' in (* |- phi' = phi'_nnf *)
+      let phi'_nnf = rand (concl phi'_nnf_eq) in
+      let phi'_prenex = PRENEX_CONV phi'_nnf in (* |- phi'_nnf = phi'_prenex *)
+        SYM (TRANS phi'_nnf_eq phi'_prenex)
+    in
+    (* presumably phi_prenex = phi'_prenex *)
+    let clean_premise = restore_right phi premise in
+    let prenex_premise = EQ_MP phi_prenex_eq clean_premise in
+      clear_right phi' prenex_premise;;
+
+  (*
+    SC :   Γ, ∀x1, ..., xn. φ <=> φ|- Δ
+        --------------------------------
+                     Γ |- Δ
+
+    ND:   Γ, ∀x1, ..., xn. φ <=> φ, ¬Δ |- ⊥
+        ------------------------------------
+                   Γ, ¬Δ |- ⊥
+  *)
+  let elim_iff_refl (pivot: term) (premise: thm) : thm =
+    let rec strip_forall (t: term) : (term list) * term =
+      if is_forall t then
+        let v, body = dest_abs t in
+        let vs, b = strip_forall body in
+          (v :: vs, b)
+      else
+        ([], t)
+    in
+    let xs, phi_eq = strip_forall (pivot) in (* ∀ xs. phi = phi *)
+    let phi, _ = dest_eq phi_eq in
+    let rule = GENL xs (REFL phi) in (* |- ∀ xs. phi = phi *)
+      PROVE_HYP rule premise;;
+
+  (*
+    SC : Γ |- a, Δ  Σ |- ¬a, Π
+        -----------------------
+            Γ, Σ |- Δ, Π
+
+    ND:  Γ, ¬a, ¬Δ |- ⊥  Σ, ¬¬a, ¬Π |- ⊥
+        ---------------------------------
+              Γ, Σ, ¬Δ, ¬Π |- ⊥
+
+    Derived version of cut where the pivot is double 
+    negated on the right.
+  *)
+  let res (pivot: term) (left_prem: thm) (right_prem: thm) : thm =
+    let nnpivot = mk_neg (mk_neg pivot) in
+    let double_neg_rule = DISCH (TAUT (mk_imp (pivot, nnpivot))) in
+    let reduced_right = PROVE_HYP double_neg_rule right_prem in
+      cut pivot left_prem reduced_right;;
+
+    (*
+    SC :   Γ[F := F] |- Δ[F := F]
+        \---------------------------
+          Γ[F := t] |- Δ[F := t]
+
+    ND :   Γ[F := F], ¬Δ[F := F] |- ⊥
+        \-----------------------------
+          Γ[F := t], ¬Δ[F := t] |- ⊥
+
+    CAVEAT: this step performs selective beta reduction after instantiation. If t
+    already occurs as a beta redux in the premise, those instances will
+    unfortunately be erroneously beta reduced as well.
+
+    This is a specialized version of inst_mult.
+  *)
+  let inst_mult (fs: term list) (ts: term list) (premise: thm) : thm =
+    let inst_base = INST (List.combine ts fs) premise in
+    let selective_beta =
+      let conv tm =
+        let lm, body = dest_comb tm in
+        if List.exists (aconv lm) ts then
+          BETA_CONV tm
+        else
+          failwith "selective_beta: not the right term"
+      in
+      DEPTH_CONV conv 
+    in
+      CONV_RULE selective_beta inst_base;;
 
   (* END STEPS ----------------------- *)
 

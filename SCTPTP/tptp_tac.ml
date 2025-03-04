@@ -909,6 +909,27 @@ module Tptp_tac = struct
       clear_right phi' prenex_premise;;
 
   (*
+    SC :   
+        ----------------
+            Γ, φ |- Δ
+
+    ND:
+        ------------------
+          Γ, ¬Δ, ¬φ |- ⊥
+
+    where Δ is a clause  resulting from the Tseitin transformation of φ.
+
+    Since this has several possible cases and is always a propositional
+    tautology, we delegate this to `TAUT`.
+  *)
+  let clausify (ants: term list) (suc: term list): thm =
+    let nsuc = map mk_neg suc in
+    let all_formulas = nsuc @ ants in
+    let ff = `F` in
+    let seq_term = List.fold_left (fun acc f -> mk_imp (f, acc)) ff all_formulas in
+      UNDISCH_ALL (TAUT seq_term);;
+
+  (*
     SC :   Γ, ∀x1, ..., xn. φ <=> φ|- Δ
         --------------------------------
                      Γ |- Δ

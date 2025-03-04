@@ -874,7 +874,7 @@ module Tptp_tac = struct
     let phi_nnf = NNF_CONV phi in (* |- phi = phi_nnf *)
     let phi'_nnf = SYM (NNF_CONV phi') in (* |- phi'_nnf = phi' *)
     (* presumably phi_nnf = phi'_nnf *)
-    let nnf_rule = TRANS phi_nnf, phi'_nnf in (* |- phi = phi' *)
+    let nnf_rule = TRANS phi_nnf phi'_nnf in (* |- phi = phi' *)
     let clean_premise = restore_right phi premise in 
     let nnf_premise = EQ_MP nnf_rule clean_premise in
       clear_right phi' nnf_premise;;
@@ -945,7 +945,7 @@ module Tptp_tac = struct
   *)
   let res (pivot: term) (left_prem: thm) (right_prem: thm) : thm =
     let nnpivot = mk_neg (mk_neg pivot) in
-    let double_neg_rule = DISCH (TAUT (mk_imp (pivot, nnpivot))) in
+    let double_neg_rule = UNDISCH (TAUT (mk_imp (pivot, nnpivot))) in
     let reduced_right = PROVE_HYP double_neg_rule right_prem in
       cut pivot left_prem reduced_right;;
 
@@ -1522,6 +1522,57 @@ module Tptp_tac = struct
             let thm = right_all haa hy p in
               map_thm thm
 
+          | "rightNnf" ->
+            let pos_r1 :: pos_r2 :: _ = int_params in
+            let (p, pseq) :: _ = parent_thms in
+            let Sequent (_, p_suc) = pseq in
+            let phi = List.nth p_suc pos_r1 in
+            let phi' = at_right pos_r2 in
+            let hphi, ty_map = formula_to_hol phi empty_map in
+            let hphi', _ = formula_to_hol phi' ty_map in
+            let thm = right_nnf hphi hphi' p in
+              map_thm thm
+
+          | "rightPrenex" ->
+            let pos_r1 :: pos_r2 :: _ = int_params in
+            let (p, pseq) :: _ = parent_thms in
+            let Sequent (_, p_suc) = pseq in
+            let phi = List.nth p_suc pos_r1 in
+            let phi' = at_right pos_r2 in
+            let hphi, ty_map = formula_to_hol phi empty_map in
+            let hphi', _ = formula_to_hol phi' ty_map in
+            let thm = right_prenex hphi hphi' p in
+              map_thm thm
+
+          | "elimIffRefl" ->
+            let pos_l :: _ = int_params in
+            let (pl, pl_seq) :: _ = parent_thms in
+            let Sequent (pl_ant, _) = pl_seq in
+            let pivot = List.nth pl_ant pos_l in
+            let hpivot, _ = formula_to_hol pivot empty_map in
+            let thm = elim_iff_refl hpivot pl in
+              map_thm thm
+
+          | "res" ->
+            let pos_r :: _ = int_params in
+            let (pl, pl_seq) :: (pr, _) :: _ = parent_thms in
+            let Sequent (_, pl_succ) = pl_seq in
+            let pivot = List.nth pl_succ pos_r in
+            let hpivot, _ = formula_to_hol pivot empty_map in
+            let thm = res hpivot pl pr in
+              map_thm thm
+
+          (* | "instMult" ->
+            let triplets_opt = list_params in
+            let triplets_opt =
+              List.find_map (
+                function 
+                  Listterm ((Data (String fname, _)) :: (Data (Fot tt, _)) :: (Listterm xs) :: _) -> (fname, tt, xs)
+                  Listterm ((Data (String fname, _)) :: (Data (Fof (Sequent (_, [tt])), _)) :: (Listterm xs) :: _) -> (fname, tt, xs)
+                  | _ -> None
+              ) triplets_opt
+            in *)
+
           | _ -> 
             failwith (Printf.sprintf "reconstruct_proof: unknown inference rule %s" rule))
 
@@ -1589,7 +1640,7 @@ module Tptp_tac = struct
 
   let EGG = 
     let egg_constr =
-      fun input_file output_file -> Printf.sprintf "/workspaces/ubuntu/egg-sc-tptp --level1 %s %s > /dev/null 2>&1" input_file output_file 
+      fun input_file output_file -> Printf.sprintf "egg-sc-tptp --level1 %s %s > /dev/null 2>&1" input_file output_file 
     in
     let egg_err = "egg failed to prove the conjecture" in
       sctptp_tac egg_constr egg_err;;
@@ -1600,10 +1651,18 @@ module Tptp_tac = struct
         let oseq = (String.to_seq output_file) in
         let suffixseq = Seq.take (Seq.length oseq - 2) oseq in
         let ofile = (String.of_seq suffixseq) in
-        Printf.sprintf "/workspaces/ubuntu/goeland_linux_release -otptp -wlogs -no_id -quoted_pred -proof_file=%s %s > /dev/null 2>&1" ofile input_file
+        Printf.sprintf "goeland -otptp -wlogs -no_id -quoted_pred -proof_file=%s %s > /dev/null 2>&1" ofile input_file
     in
     let gld_err = "Goeland failed to prove the conjecture" in
       sctptp_tac gld_constr gld_err;;
+
+  let PROVER9 = 
+    let p9_constr = 
+      fun input_file output_file ->
+        Printf.sprintf "java -jar p9.jar %s %s" input_file output_file
+    in
+    let p9_error = "Prover9 failed to prove the conjecture" in
+      sctptp_tac p9_constr p9_error;;
 
   module Tptp_tac = struct
     let sctptp_tac = sctptp_tac;;

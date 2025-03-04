@@ -1543,6 +1543,16 @@ module Tptp_tac = struct
             let thm = right_all haa hy p in
               map_thm thm
 
+          (* LEVEL 3 STEPS ----------------------------------------------------------------- *)
+
+          | "clausify" ->
+            let hant, ty_map = formula_list_to_hol ant empty_map in
+            let hsuc, ty_map' = formula_list_to_hol suc ty_map in
+            let hant' = List.map (fun f -> propagate_unifiers f ty_map') hant in
+            let hsuc' = List.map (fun f -> propagate_unifiers f ty_map') hsuc in
+            let thm = clausify hant' hsuc' in
+              map_thm thm
+
           | "rightNnf" ->
             let pos_r1 :: pos_r2 :: _ = int_params in
             let (p, pseq) :: _ = parent_thms in

@@ -1593,16 +1593,32 @@ module Tptp_tac = struct
             let thm = res hpivot pl pr in
               map_thm thm
 
-          (* | "instMult" ->
+          | "instMult" ->
+            let find_map_string ls =
+              List.filter_map (function Data (String s, _) -> Some s | _ -> None) ls
+            in
             let triplets_opt = list_params in
-            let triplets_opt =
-              List.find_map (
+            let triplets =
+              List.filter_map (
                 function 
-                  Listterm ((Data (String fname, _)) :: (Data (Fot tt, _)) :: (Listterm xs) :: _) -> (fname, tt, xs)
-                  Listterm ((Data (String fname, _)) :: (Data (Fof (Sequent (_, [tt])), _)) :: (Listterm xs) :: _) -> (fname, tt, xs)
+                  Listterm ((Data (String fname, _)) :: (Data (Fot tt, _)) :: (Listterm xs) :: _) -> (fname, tt, find_map_string xs)
+                  Listterm ((Data (String fname, _)) :: (Data (Fof (Sequent (_, [tt])), _)) :: (Listterm xs) :: _) -> (fname, tt, find_map_string xs)
                   | _ -> None
               ) triplets_opt
-            in *)
+            in
+            let (p, _) :: _ = parent_thms in
+            let fts_prep = List.map (fun (fname, t, xs) -> 
+              let ht, ty_map = tptp_to_hol_untyped t empty_map !def_map in
+              let hxs = List.map (fun x -> fst (tptp_to_hol_untyped (Var x) ty_map !def_map)) xs in
+              let lambda_t = List.fold_right (fun x t -> mk_abs (x, t)) hxs ht in
+              let fty = type_of lambda_t in
+              let hf = mk_var (fname, fty) in
+              (hf, lambda_t)
+            ) triplets
+            in
+            let fs, ts = List.split fts_prep in
+            let thm = inst_mult fs ts p in
+              map_thm thm
 
           | _ -> 
             failwith (Printf.sprintf "reconstruct_proof: unknown inference rule %s" rule))

@@ -1601,8 +1601,8 @@ module Tptp_tac = struct
             let triplets =
               List.filter_map (
                 function 
-                  Listterm ((Data (String fname, _)) :: (Data (Fot tt, _)) :: (Listterm xs) :: _) -> (fname, tt, find_map_string xs)
-                  Listterm ((Data (String fname, _)) :: (Data (Fof (Sequent (_, [tt])), _)) :: (Listterm xs) :: _) -> (fname, tt, find_map_string xs)
+                  ((Data (String fname, _)) :: (Data (Fot tt, _)) :: (Listterm xs) :: _) -> Some (fname, tt, find_map_string xs)
+                  | ((Data (String fname, _)) :: (Data (Fof (Sequent (_, [tt])), _)) :: (Listterm xs) :: _) -> Some (fname, tt, find_map_string xs)
                   | _ -> None
               ) triplets_opt
             in

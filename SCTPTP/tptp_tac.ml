@@ -1459,8 +1459,8 @@ module Tptp_tac = struct
           | "leftHyp" ->
             (* basically hypothesis but with both formulas on the left *)
             let pos_l :: _ = int_params in
-            let an = at_left pos_l in
-            let Not a = an in
+            let a = at_left pos_l in
+            let an = Not a in
             let wls = remove an (remove a ant) in
             let wrs = suc in
             let hwls, ty_map = formula_list_to_hol wls empty_map in

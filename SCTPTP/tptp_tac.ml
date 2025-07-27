@@ -1649,7 +1649,7 @@ module Tptp_tac = struct
             ant |- concl
   *)
   let choose_proof (proofs: thm list) (ant: term list) (concl: term) : thm option =
-    let _ = Printf.printf "\nProved thms: %s" (String.concat "\n" (List.map string_of_thm proofs)) in
+    (* let _ = Printf.printf "\nProved thms: %s" (String.concat "\n" (List.map string_of_thm proofs)) in *)
     let nterm = mk_neg concl in
     let expected_terms = (mk_neg concl) :: ant in
     let term_count = List.length expected_terms in

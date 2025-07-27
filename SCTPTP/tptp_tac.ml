@@ -1706,7 +1706,7 @@ module Tptp_tac = struct
   let PROVER9 = 
     let p9_constr = 
       fun input_file output_file ->
-        Printf.sprintf "java -jar p9.jar %s %s" input_file output_file
+        Printf.sprintf "p9 --input %s --output %s > /dev/null 2>&1" input_file output_file
     in
     let p9_error = "Prover9 failed to prove the conjecture" in
       sctptp_tac p9_constr p9_error;;
@@ -1715,6 +1715,7 @@ module Tptp_tac = struct
     let sctptp_tac = sctptp_tac;;
     let EGG = EGG;;
     let GOELAND = GOELAND;;
+    let PROVER9 = PROVER9;;
   end;;
 end;;
 

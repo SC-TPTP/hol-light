@@ -1698,7 +1698,7 @@ module Tptp_tac = struct
         let oseq = (String.to_seq output_file) in
         let suffixseq = Seq.take (Seq.length oseq - 2) oseq in
         let ofile = (String.of_seq suffixseq) in
-        Printf.sprintf "goeland -otptp -wlogs -no_id -quoted_pred -proof_file=%s %s > /dev/null 2>&1" ofile input_file
+        Printf.sprintf "goeland -osctptp -wlogs -no_id -quoted_pred -proof_file=%s %s > /dev/null 2>&1" ofile input_file
     in
     let gld_err = "Goeland failed to prove the conjecture" in
       sctptp_tac gld_constr gld_err;;
